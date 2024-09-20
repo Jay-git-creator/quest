@@ -2,14 +2,93 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Zomato Ads Quest</title>
+  <title>Zomato Ads Quest - Mobile Friendly</title>
   <style>
-    body { margin: 0; padding: 0; }
-    canvas { display: block; margin: 0 auto; background-color: #a0d0ff; }
+    body { margin: 0; padding: 0; overflow: hidden; }
+    canvas { display: block; margin: 0 auto; background-color: #a0d0ff; touch-action: none; }
+    /* On-screen controls */
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    .control-button {
+      width: 60px;
+      height: 60px;
+      margin: 10px;
+      background-color: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #ffffff;
+      font-size: 30px;
+      user-select: none;
+      touch-action: none;
+    }
+    /* Dialogue styles */
+    .dialogue-container {
+      position: fixed;
+      top: 10%;
+      left: 5%;
+      width: 90%;
+      height: 80%;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 20;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .dialogue-box {
+      background-color: #ffffff;
+      width: 90%;
+      height: 90%;
+      padding: 20px;
+      overflow-y: auto;
+      text-align: center;
+    }
+    .dialogue-button {
+      width: 80%;
+      margin: 10px;
+      padding: 15px;
+      font-size: 18px;
+      color: #ffffff;
+      border: none;
+      border-radius: 5px;
+    }
+    .sell-button {
+      background-color: #00cc00;
+    }
+    .dont-sell-button {
+      background-color: #cc0000;
+    }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- On-screen controls -->
+  <div class="controls">
+    <div class="control-button" id="left-button">◀</div>
+    <div class="control-button" id="up-button">▲</div>
+    <div class="control-button" id="down-button">▼</div>
+    <div class="control-button" id="right-button">▶</div>
+  </div>
+
+  <!-- Dialogue Container -->
+  <div class="dialogue-container" id="dialogue-container">
+    <div class="dialogue-box" id="dialogue-box">
+      <!-- Dialogue content will be injected here -->
+    </div>
+  </div>
+
   <script src="main.js"></script>
 </body>
 </html>
+
