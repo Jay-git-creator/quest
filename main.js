@@ -2,15 +2,9 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Adjust canvas size to fit mobile screen
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-
-const TILE_SIZE = 64; // Increased tile size for better visibility on mobile
+const TILE_SIZE = 32;
+const MAP_WIDTH = 25; // 800 / 32
+const MAP_HEIGHT = 18; // 600 / 32
 
 let keys = {};
 let gameState = 'play'; // 'play' or 'dialogue'
@@ -22,7 +16,7 @@ let player = {
   y: 0,
   width: TILE_SIZE,
   height: TILE_SIZE,
-  speed: 4,
+  speed: 2,
   direction: 'right', // 'left', 'right', 'up', 'down'
   frame: 0,
   frameDelay: 0,
@@ -30,7 +24,7 @@ let player = {
 };
 
 /** Game Data **/
-let clients = 0; // Represents restaurants covered
+let clients = 0; // Renamed to represent restaurants covered
 let score = 0; // For tracking correct choices
 
 /** Map Data **/
@@ -39,7 +33,7 @@ let buildings = [];
 let restaurants = [];
 
 /** Office **/
-const office = { x: 6 * TILE_SIZE, y: 5 * TILE_SIZE };
+const office = { x: 12 * TILE_SIZE, y: 9 * TILE_SIZE };
 
 /** Floating Texts for Animations **/
 let floatingTexts = [];
@@ -54,12 +48,7 @@ function init() {
 }
 
 /** Generate Map **/
-const MAP_WIDTH = Math.ceil(canvas.width / TILE_SIZE);
-const MAP_HEIGHT = Math.ceil(canvas.height / TILE_SIZE);
-
 function generateMap() {
-  mapData = [];
-  buildings = [];
   for (let y = 0; y < MAP_HEIGHT; y++) {
     let row = [];
     for (let x = 0; x < MAP_WIDTH; x++) {
@@ -82,7 +71,6 @@ function generateMap() {
 
 /** Place Restaurants **/
 function placeRestaurants() {
-  restaurants = [];
   for (let i = 0; i < 5; i++) {
     let placed = false;
     while (!placed) {
@@ -117,28 +105,28 @@ function update() {
   if (gameState === 'play') {
     // Player Movement
     let moved = false;
-    if (keys['left']) {
+    if (keys['ArrowLeft'] || keys['a']) {
       if (!checkCollision(player.x - player.speed, player.y)) {
         player.x -= player.speed;
         player.direction = 'left';
         moved = true;
       }
     }
-    if (keys['right']) {
+    if (keys['ArrowRight'] || keys['d']) {
       if (!checkCollision(player.x + player.speed, player.y)) {
         player.x += player.speed;
         player.direction = 'right';
         moved = true;
       }
     }
-    if (keys['up']) {
+    if (keys['ArrowUp'] || keys['w']) {
       if (!checkCollision(player.x, player.y - player.speed)) {
         player.y -= player.speed;
         player.direction = 'up';
         moved = true;
       }
     }
-    if (keys['down']) {
+    if (keys['ArrowDown'] || keys['s']) {
       if (!checkCollision(player.x, player.y + player.speed)) {
         player.y += player.speed;
         player.direction = 'down';
@@ -206,10 +194,15 @@ function draw() {
   floatingTexts.forEach(ft => {
     ctx.globalAlpha = ft.opacity;
     ctx.fillStyle = '#00FF00'; // Green color
-    ctx.font = '24px Arial';
+    ctx.font = '20px Arial';
     ctx.fillText(ft.text, ft.x - ctx.measureText(ft.text).width / 2, ft.y);
     ctx.globalAlpha = 1.0;
   });
+
+  // Draw Dialogue if in dialogue state
+  if (gameState === 'dialogue') {
+    drawDialogue();
+  }
 }
 
 /** Check Collision with Buildings **/
@@ -260,20 +253,20 @@ function drawOffice(x, y) {
 
   // Base of the building
   ctx.fillStyle = '#555555'; // Dark gray color
-  ctx.fillRect(0, 16, TILE_SIZE, TILE_SIZE - 16);
+  ctx.fillRect(0, 8, TILE_SIZE, TILE_SIZE - 8);
 
   // Roof
   ctx.fillStyle = '#777777'; // Gray color
-  ctx.fillRect(0, 0, TILE_SIZE, 16);
+  ctx.fillRect(0, 0, TILE_SIZE, 8);
 
   // Door
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(TILE_SIZE / 2 - 8, TILE_SIZE - 24, 16, 24);
+  ctx.fillRect(12, 20, 8, 12);
 
   // Sign
   ctx.fillStyle = '#000000';
-  ctx.font = '14px Arial';
-  ctx.fillText('Office', -10, -5);
+  ctx.font = '12px Arial';
+  ctx.fillText('Office', -8, -5);
 
   ctx.restore();
 }
@@ -313,22 +306,22 @@ function drawRestaurant(x, y) {
 
   // Base of the building
   ctx.fillStyle = '#8B4513'; // Brown color
-  ctx.fillRect(0, 16, TILE_SIZE, TILE_SIZE - 16);
+  ctx.fillRect(0, 8, TILE_SIZE, TILE_SIZE - 8);
 
   // Roof
   ctx.fillStyle = '#CD853F'; // Peru color
-  ctx.fillRect(0, 0, TILE_SIZE, 16);
+  ctx.fillRect(0, 0, TILE_SIZE, 8);
 
   // Door
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(TILE_SIZE / 2 - 8, TILE_SIZE - 24, 16, 24);
+  ctx.fillRect(12, 20, 8, 12);
 
   // Sign
   ctx.fillStyle = '#FF0000';
-  ctx.fillRect(TILE_SIZE / 2 - 16, 16, 32, 8);
+  ctx.fillRect(8, 8, 16, 4);
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = '14px Arial';
-  ctx.fillText('Restaurant', -20, -5);
+  ctx.font = '12px Arial';
+  ctx.fillText('Restaurant', -8, -5);
 
   ctx.restore();
 }
@@ -337,13 +330,16 @@ function drawRestaurant(x, y) {
 function drawUI() {
   // Draw background for UI
   ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-  ctx.fillRect(0, 0, canvas.width, 50);
+  ctx.fillRect(0, 0, canvas.width, 40);
   ctx.fillStyle = '#ffffff';
-  ctx.font = '24px Arial';
+  ctx.font = '16px Arial';
+
+  // Removed "Sales" from the UI
+  // ctx.fillText('Sales: $' + sales, 10, 25);
 
   // Updated "Clients" to "Restaurants Covered"
-  ctx.fillText('Restaurants Covered: ' + clients, 10, 35);
-  ctx.fillText('Score: ' + score, canvas.width - 150, 35);
+  ctx.fillText('Restaurants Covered: ' + clients, 10, 25);
+  ctx.fillText('Score: ' + score, 250, 25);
 }
 
 /** Open Dialogue **/
@@ -351,61 +347,80 @@ function openDialogue(restaurant) {
   gameState = 'dialogue';
   currentDialogue = restaurant;
   clients += 1; // Increment restaurants covered when visiting
-  showDialogue();
 }
 
-/** Show Dialogue **/
-function showDialogue() {
-  const dialogueContainer = document.getElementById('dialogue-container');
-  const dialogueBox = document.getElementById('dialogue-box');
-  dialogueBox.innerHTML = ''; // Clear previous content
+/** Draw Dialogue **/
+function drawDialogue() {
+  // Draw dialogue box
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(100, 100, 600, 400);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(110, 110, 580, 380);
 
-  // Dialogue content
+  // Dialogue text
+  ctx.fillStyle = '#000000';
+  ctx.font = '18px Arial';
+  ctx.fillText('Restaurant Details:', 130, 150);
+
+  // Display criteria values
   const restaurant = currentDialogue;
+  ctx.font = '16px Arial';
+  ctx.fillText('Has tried Ads before: ' + (restaurant.hasTriedAdsBefore ? 'Yes' : 'No'), 130, 190);
+  ctx.fillText('Image Coverage: ' + restaurant.imageCoverage + '%', 130, 220);
+  ctx.fillText('Menu to Order (M2O%): ' + restaurant.m2o + '%', 130, 250);
 
-  let content = `
-    <h2>Restaurant Details:</h2>
-    <p>Has tried Ads before: ${restaurant.hasTriedAdsBefore ? 'Yes' : 'No'}</p>
-    <p>Image Coverage: ${restaurant.imageCoverage}%</p>
-    <p>Menu to Order (M2O%): ${restaurant.m2o}%</p>
-    <h3>Should you sell VP+ to this restaurant?</h3>
-  `;
-
-  dialogueBox.innerHTML = content;
+  // Instructions
+  ctx.font = '18px Arial';
+  ctx.fillText('Should you sell VP+ to this restaurant?', 130, 290);
 
   // Sell VP+ Button
-  const sellButton = document.createElement('button');
-  sellButton.classList.add('dialogue-button', 'sell-button');
-  sellButton.textContent = 'Sell VP+';
-  sellButton.addEventListener('click', () => {
-    handlePlayerChoice(true);
-    closeDialogue();
-  });
+  ctx.fillStyle = '#00cc00';
+  ctx.fillRect(200, 350, 150, 50);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '18px Arial';
+  let sellText = 'Sell VP+';
+  let sellTextWidth = ctx.measureText(sellText).width;
+  ctx.fillText(sellText, 200 + 75 - sellTextWidth / 2, 380);
 
   // Do Not Sell VP+ Button
-  const dontSellButton = document.createElement('button');
-  dontSellButton.classList.add('dialogue-button', 'dont-sell-button');
-  dontSellButton.textContent = 'Do Not Sell VP+';
-  dontSellButton.addEventListener('click', () => {
+  ctx.fillStyle = '#cc0000';
+  ctx.fillRect(450, 350, 180, 50); // Increased width to prevent overflow
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '16px Arial';
+  let notSellText = 'Do Not Sell VP+';
+  let notSellTextWidth = ctx.measureText(notSellText).width;
+  ctx.fillText(notSellText, 450 + 90 - notSellTextWidth / 2, 380); // Adjusted position
+
+  // Note: Adjusted font sizes and positions to prevent text overflow
+}
+
+/** Dialogue Click Listener **/
+canvas.addEventListener('click', function(e) {
+  if (gameState === 'dialogue') {
+    dialogueClickListener(e);
+  }
+});
+
+function dialogueClickListener(e) {
+  const rect = canvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  // Sell VP+ Button
+  if (mouseX >= 200 && mouseX <= 350 && mouseY >= 350 && mouseY <= 400) {
+    // Player chose to sell VP+
+    handlePlayerChoice(true);
+    closeDialogue();
+  }
+
+  // Do Not Sell VP+ Button
+  if (mouseX >= 450 && mouseX <= 630 && mouseY >= 350 && mouseY <= 400) {
+    // Player chose not to sell VP+
     handlePlayerChoice(false);
     closeDialogue();
-  });
-
-  dialogueBox.appendChild(sellButton);
-  dialogueBox.appendChild(dontSellButton);
-
-  dialogueContainer.style.display = 'flex';
+  }
 }
 
-/** Close Dialogue **/
-function closeDialogue() {
-  gameState = 'play';
-  currentDialogue = null;
-  const dialogueContainer = document.getElementById('dialogue-container');
-  dialogueContainer.style.display = 'none';
-}
-
-/** Handle Player Choice **/
 function handlePlayerChoice(playerChoseToSell) {
   const restaurant = currentDialogue;
   // Check if the restaurant meets all criteria
@@ -435,131 +450,113 @@ function handlePlayerChoice(playerChoseToSell) {
   }
 }
 
+function closeDialogue() {
+  gameState = 'play';
+  currentDialogue = null;
+}
+
 /** Event Listeners **/
+window.addEventListener('keydown', function(e) {
+  keys[e.key] = true;
+});
 
-// On-screen control buttons
-const leftButton = document.getElementById('left-button');
-const rightButton = document.getElementById('right-button');
-const upButton = document.getElementById('up-button');
-const downButton = document.getElementById('down-button');
+window.addEventListener('keyup', function(e) {
+  keys[e.key] = false;
+});
 
-function handleButtonPress(direction) {
-  keys[direction] = true;
-}
-
-function handleButtonRelease(direction) {
-  keys[direction] = false;
-}
-
-// Add touch event listeners to control buttons
-leftButton.addEventListener('touchstart', () => handleButtonPress('left'));
-leftButton.addEventListener('touchend', () => handleButtonRelease('left'));
-rightButton.addEventListener('touchstart', () => handleButtonPress('right'));
-rightButton.addEventListener('touchend', () => handleButtonRelease('right'));
-upButton.addEventListener('touchstart', () => handleButtonPress('up'));
-upButton.addEventListener('touchend', () => handleButtonRelease('up'));
-downButton.addEventListener('touchstart', () => handleButtonPress('down'));
-downButton.addEventListener('touchend', () => handleButtonRelease('down'));
-
-// Prevent default scrolling on touch devices
-document.body.addEventListener('touchmove', function(event) {
-  event.preventDefault();
-}, { passive: false });
-
-// Start the Game
+/** Start the Game **/
 init();
 
 /** Draw Sales Manager Character **/
 function drawSalesManagerRight(frame) {
   // Sales manager facing right
   ctx.fillStyle = '#FFD700'; // Yellow for head
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 8, TILE_SIZE / 2, TILE_SIZE / 2); // Head
+  ctx.fillRect(12, 4, 8, 8); // Head
 
   ctx.fillStyle = '#000000'; // Black for eyes
-  ctx.fillRect(TILE_SIZE / 2 + TILE_SIZE / 8, TILE_SIZE / 4, TILE_SIZE / 8, TILE_SIZE / 8); // Eye
+  ctx.fillRect(16, 6, 2, 2); // Eye
 
   ctx.fillStyle = '#FF4500'; // Orange for body
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 2, TILE_SIZE / 2, TILE_SIZE / 2); // Body
+  ctx.fillRect(12, 12, 8, 12); // Body
 
   ctx.fillStyle = '#0000FF'; // Blue for legs
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Left leg
-  ctx.fillRect(TILE_SIZE / 2, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Right leg
+  ctx.fillRect(12, 24, 4, 8); // Left leg
+  ctx.fillRect(16, 24, 4, 8); // Right leg
 
   // Simple walking animation
   if (frame === 1) {
-    ctx.clearRect(TILE_SIZE / 4, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Erase left leg
+    ctx.clearRect(12, 24, 4, 8); // Erase left leg
   } else {
-    ctx.clearRect(TILE_SIZE / 2, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Erase right leg
+    ctx.clearRect(16, 24, 4, 8); // Erase right leg
   }
 }
 
 function drawSalesManagerLeft(frame) {
   // Sales manager facing left
   ctx.fillStyle = '#FFD700'; // Yellow for head
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 8, TILE_SIZE / 2, TILE_SIZE / 2); // Head
+  ctx.fillRect(12, 4, 8, 8); // Head
 
   ctx.fillStyle = '#000000'; // Black for eyes
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 8, TILE_SIZE / 8); // Eye
+  ctx.fillRect(14, 6, 2, 2); // Eye
 
   ctx.fillStyle = '#FF4500'; // Orange for body
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 2, TILE_SIZE / 2, TILE_SIZE / 2); // Body
+  ctx.fillRect(12, 12, 8, 12); // Body
 
   ctx.fillStyle = '#0000FF'; // Blue for legs
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Left leg
-  ctx.fillRect(TILE_SIZE / 2, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Right leg
+  ctx.fillRect(12, 24, 4, 8); // Left leg
+  ctx.fillRect(16, 24, 4, 8); // Right leg
 
   // Simple walking animation
   if (frame === 1) {
-    ctx.clearRect(TILE_SIZE / 4, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Erase left leg
+    ctx.clearRect(12, 24, 4, 8); // Erase left leg
   } else {
-    ctx.clearRect(TILE_SIZE / 2, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Erase right leg
+    ctx.clearRect(16, 24, 4, 8); // Erase right leg
   }
 }
 
 function drawSalesManagerUp(frame) {
   // Sales manager facing up
   ctx.fillStyle = '#FFD700'; // Yellow for head
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 8, TILE_SIZE / 2, TILE_SIZE / 2); // Head
+  ctx.fillRect(12, 4, 8, 8); // Head
 
   ctx.fillStyle = '#000000'; // Black for hair
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 8, TILE_SIZE / 2, TILE_SIZE / 4); // Hair
+  ctx.fillRect(12, 4, 8, 4); // Hair
 
   ctx.fillStyle = '#FF4500'; // Orange for body
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 2, TILE_SIZE / 2, TILE_SIZE / 2); // Body
+  ctx.fillRect(12, 12, 8, 12); // Body
 
   ctx.fillStyle = '#0000FF'; // Blue for legs
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Left leg
-  ctx.fillRect(TILE_SIZE / 2, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Right leg
+  ctx.fillRect(12, 24, 4, 8); // Left leg
+  ctx.fillRect(16, 24, 4, 8); // Right leg
 
   // Simple walking animation
   if (frame === 1) {
-    ctx.clearRect(TILE_SIZE / 4, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Erase left leg
+    ctx.clearRect(12, 24, 4, 8); // Erase left leg
   } else {
-    ctx.clearRect(TILE_SIZE / 2, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Erase right leg
+    ctx.clearRect(16, 24, 4, 8); // Erase right leg
   }
 }
 
 function drawSalesManagerDown(frame) {
   // Sales manager facing down
   ctx.fillStyle = '#FFD700'; // Yellow for head
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 8, TILE_SIZE / 2, TILE_SIZE / 2); // Head
+  ctx.fillRect(12, 4, 8, 8); // Head
 
   ctx.fillStyle = '#000000'; // Black for eyes
-  ctx.fillRect(TILE_SIZE / 4 + TILE_SIZE / 8, TILE_SIZE / 4, TILE_SIZE / 8, TILE_SIZE / 8); // Left eye
-  ctx.fillRect(TILE_SIZE / 2 + TILE_SIZE / 16, TILE_SIZE / 4, TILE_SIZE / 8, TILE_SIZE / 8); // Right eye
+  ctx.fillRect(14, 6, 2, 2); // Left eye
+  ctx.fillRect(16, 6, 2, 2); // Right eye
 
   ctx.fillStyle = '#FF4500'; // Orange for body
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE / 2, TILE_SIZE / 2, TILE_SIZE / 2); // Body
+  ctx.fillRect(12, 12, 8, 12); // Body
 
   ctx.fillStyle = '#0000FF'; // Blue for legs
-  ctx.fillRect(TILE_SIZE / 4, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Left leg
-  ctx.fillRect(TILE_SIZE / 2, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Right leg
+  ctx.fillRect(12, 24, 4, 8); // Left leg
+  ctx.fillRect(16, 24, 4, 8); // Right leg
 
   // Simple walking animation
   if (frame === 1) {
-    ctx.clearRect(TILE_SIZE / 4, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Erase left leg
+    ctx.clearRect(12, 24, 4, 8); // Erase left leg
   } else {
-    ctx.clearRect(TILE_SIZE / 2, TILE_SIZE - TILE_SIZE / 4, TILE_SIZE / 4, TILE_SIZE / 4); // Erase right leg
+    ctx.clearRect(16, 24, 4, 8); // Erase right leg
   }
 }
-
