@@ -9,6 +9,7 @@ const MAP_HEIGHT = 18; // 600 / 32
 let keys = {};
 let gameState = 'play'; // 'play' or 'dialogue'
 let currentDialogue = null;
+let showReadme = true; // New variable to control readme visibility
 
 /** Player Object **/
 let player = {
@@ -26,6 +27,7 @@ let player = {
 /** Game Data **/
 let clients = 0; // Renamed to represent restaurants covered
 let score = 0; // For tracking correct choices
+let gameCompleted = false; // New variable to track game completion
 
 /** Map Data **/
 let mapData = [];
@@ -71,7 +73,7 @@ function generateMap() {
 
 /** Place Restaurants **/
 function placeRestaurants() {
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 10; i++) { // Changed from 5 to 10
     let placed = false;
     while (!placed) {
       let x = Math.floor(Math.random() * MAP_WIDTH);
@@ -84,7 +86,9 @@ function placeRestaurants() {
           // Randomly assign criteria values
           hasTriedAdsBefore: Math.random() < 0.5,
           imageCoverage: Math.floor(Math.random() * 81) + 20, // 20% to 100%
-          m2o: parseFloat((Math.random() * 6 + 4).toFixed(1)) // 4.0% to 10.0%
+          m2o: parseFloat((Math.random() * 6 + 4).toFixed(1)), // 4.0% to 10.0%
+          rating: parseFloat((Math.random() * 3 + 2).toFixed(1)), // 2.0 to 5.0
+          visibility: Math.floor(Math.random() * 101) // 0% to 100%
         };
         restaurants.push(restaurant);
         placed = true;
@@ -102,66 +106,75 @@ function gameLoop() {
 
 /** Update Function **/
 function update() {
-  if (gameState === 'play') {
-    // Player Movement
-    let moved = false;
-    if (keys['ArrowLeft'] || keys['a']) {
-      if (!checkCollision(player.x - player.speed, player.y)) {
-        player.x -= player.speed;
-        player.direction = 'left';
-        moved = true;
+  if (!showReadme && !gameCompleted) {
+    // Only update game state if readme is not showing and game is not completed
+    if (gameState === 'play') {
+      // Player Movement
+      let moved = false;
+      if (keys['ArrowLeft'] || keys['a']) {
+        if (!checkCollision(player.x - player.speed, player.y)) {
+          player.x -= player.speed;
+          player.direction = 'left';
+          moved = true;
+        }
       }
-    }
-    if (keys['ArrowRight'] || keys['d']) {
-      if (!checkCollision(player.x + player.speed, player.y)) {
-        player.x += player.speed;
-        player.direction = 'right';
-        moved = true;
+      if (keys['ArrowRight'] || keys['d']) {
+        if (!checkCollision(player.x + player.speed, player.y)) {
+          player.x += player.speed;
+          player.direction = 'right';
+          moved = true;
+        }
       }
-    }
-    if (keys['ArrowUp'] || keys['w']) {
-      if (!checkCollision(player.x, player.y - player.speed)) {
-        player.y -= player.speed;
-        player.direction = 'up';
-        moved = true;
+      if (keys['ArrowUp'] || keys['w']) {
+        if (!checkCollision(player.x, player.y - player.speed)) {
+          player.y -= player.speed;
+          player.direction = 'up';
+          moved = true;
+        }
       }
-    }
-    if (keys['ArrowDown'] || keys['s']) {
-      if (!checkCollision(player.x, player.y + player.speed)) {
-        player.y += player.speed;
-        player.direction = 'down';
-        moved = true;
+      if (keys['ArrowDown'] || keys['s']) {
+        if (!checkCollision(player.x, player.y + player.speed)) {
+          player.y += player.speed;
+          player.direction = 'down';
+          moved = true;
+        }
+      }
+
+      // Animate Player
+      if (moved) {
+        player.frameDelay++;
+        if (player.frameDelay >= player.frameMax) {
+          player.frameDelay = 0;
+          player.frame = (player.frame + 1) % 2; // Two frames for animation
+        }
+      } else {
+        player.frame = 0;
+      }
+
+      // Check for Restaurant Interaction
+      restaurants.forEach(restaurant => {
+        if (!restaurant.visited && isColliding(player, restaurant)) {
+          restaurant.visited = true;
+          openDialogue(restaurant);
+        }
+      });
+
+      // Check if all restaurants have been visited
+      if (clients === restaurants.length) {
+        gameCompleted = true;
+        showFinalScore();
       }
     }
 
-    // Animate Player
-    if (moved) {
-      player.frameDelay++;
-      if (player.frameDelay >= player.frameMax) {
-        player.frameDelay = 0;
-        player.frame = (player.frame + 1) % 2; // Two frames for animation
-      }
-    } else {
-      player.frame = 0;
-    }
-
-    // Check for Restaurant Interaction
-    restaurants.forEach(restaurant => {
-      if (!restaurant.visited && isColliding(player, restaurant)) {
-        restaurant.visited = true;
-        openDialogue(restaurant);
+    // Update floating texts
+    floatingTexts.forEach((ft, index) => {
+      ft.y -= 1; // Move up
+      ft.opacity -= 0.02; // Fade out
+      if (ft.opacity <= 0) {
+        floatingTexts.splice(index, 1);
       }
     });
   }
-
-  // Update floating texts
-  floatingTexts.forEach((ft, index) => {
-    ft.y -= 1; // Move up
-    ft.opacity -= 0.02; // Fade out
-    if (ft.opacity <= 0) {
-      floatingTexts.splice(index, 1);
-    }
-  });
 }
 
 /** Draw Function **/
@@ -169,41 +182,139 @@ function draw() {
   // Clear Canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw Map
-  drawMap();
+  // Draw game elements only if readme is not showing and game is not completed
+  if (!showReadme && !gameCompleted) {
+    // Draw Map
+    drawMap();
 
-  // Draw Office
-  drawOffice(office.x, office.y);
+    // Draw Office
+    drawOffice(office.x, office.y);
 
-  // Draw Restaurants
-  restaurants.forEach(restaurant => {
-    if (!restaurant.visited) {
-      drawRestaurant(restaurant.x, restaurant.y);
+    // Draw Restaurants
+    restaurants.forEach(restaurant => {
+      if (!restaurant.visited) {
+        drawRestaurant(restaurant.x, restaurant.y);
+      }
+    });
+
+    // Draw Player
+    if (gameState === 'play' || gameState === 'dialogue') {
+      drawPlayer();
+    }
+
+    // Draw UI
+    drawUI();
+
+    // Draw Floating Texts
+    floatingTexts.forEach(ft => {
+      ctx.globalAlpha = ft.opacity;
+      ctx.fillStyle = '#00FF00'; // Green color
+      ctx.font = '20px Arial';
+      ctx.fillText(ft.text, ft.x - ctx.measureText(ft.text).width / 2, ft.y);
+      ctx.globalAlpha = 1.0;
+    });
+
+    // Draw Dialogue if in dialogue state
+    if (gameState === 'dialogue') {
+      drawDialogue();
+    }
+  }
+
+  // Draw readme popup if it's showing
+  if (showReadme) {
+    drawReadme();
+  }
+
+  // Draw final score popup if game is completed
+  if (gameCompleted) {
+    drawFinalScore();
+  }
+}
+
+/** Draw Readme Popup **/
+function drawReadme() {
+  // Draw semi-transparent background
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw readme box
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(100, 50, 600, 500);
+
+  // Draw title
+  ctx.fillStyle = '#000000';
+  ctx.font = 'bold 24px Arial';
+  ctx.fillText('Welcome to the VP+ Sales Game!', 250, 100);
+
+  // Draw instructions
+  ctx.font = '16px Arial';
+  const instructions = [
+    "You are a Key Account Manager for your portfolio Restaurants",
+    "Your goal is to visit restaurants and decide which product to sell basis eligibility criteria",
+    "",
+    "Game Controls:",
+    "- Use arrow keys or WASD to move",
+    "- Visit restaurants (brown buildings) to interact",
+    "",
+    "Selling Rules:",
+    "  1. Read the criteria of the restaurant",
+    "  2. Select all the products for which the restaurant is eligible",
+    "  3. If your selection is correct, you will get a score",
+    "  4. Basis your score you will see your rank on the leaderboard",
+    "",
+    "Good luck!"
+  ];
+
+  const maxWidth = 550; // Maximum width for text wrapping
+  let y = 140; // Starting y position for text
+
+  instructions.forEach((line) => {
+    if (line === "") {
+      y += 20; // Add extra space for empty lines
+    } else {
+      let words = line.split(' ');
+      let currentLine = '';
+
+      words.forEach((word) => {
+        let testLine = currentLine + word + ' ';
+        let metrics = ctx.measureText(testLine);
+        let testWidth = metrics.width;
+
+        if (testWidth > maxWidth && currentLine !== '') {
+          ctx.fillText(currentLine, 120, y);
+          currentLine = word + ' ';
+          y += 25;
+        } else {
+          currentLine = testLine;
+        }
+      });
+
+      ctx.fillText(currentLine, 120, y);
+      y += 25;
     }
   });
 
-  // Draw Player
-  if (gameState === 'play' || gameState === 'dialogue') {
-    drawPlayer();
-  }
-
-  // Draw UI
-  drawUI();
-
-  // Draw Floating Texts
-  floatingTexts.forEach(ft => {
-    ctx.globalAlpha = ft.opacity;
-    ctx.fillStyle = '#00FF00'; // Green color
-    ctx.font = '20px Arial';
-    ctx.fillText(ft.text, ft.x - ctx.measureText(ft.text).width / 2, ft.y);
-    ctx.globalAlpha = 1.0;
-  });
-
-  // Draw Dialogue if in dialogue state
-  if (gameState === 'dialogue') {
-    drawDialogue();
-  }
+  // Draw start button
+  ctx.fillStyle = '#4CAF50';
+  ctx.fillRect(350, 480, 100, 40);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 18px Arial';
+  ctx.fillText('Start', 380, 508);
 }
+
+/** Readme Click Listener **/
+canvas.addEventListener('click', function(e) {
+  if (showReadme) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Check if click is on the start button
+    if (mouseX >= 350 && mouseX <= 450 && mouseY >= 480 && mouseY <= 520) {
+      showReadme = false; // Hide readme and start the game
+    }
+  }
+});
 
 /** Check Collision with Buildings **/
 function checkCollision(x, y) {
@@ -359,40 +470,53 @@ function drawDialogue() {
 
   // Dialogue text
   ctx.fillStyle = '#000000';
-  ctx.font = '18px Arial';
+  ctx.font = 'bold 18px Arial';
   ctx.fillText('Restaurant Details:', 130, 150);
+  ctx.font = '16px Arial';
 
   // Display criteria values
   const restaurant = currentDialogue;
   ctx.font = '16px Arial';
-  ctx.fillText('Has tried Ads before: ' + (restaurant.hasTriedAdsBefore ? 'Yes' : 'No'), 130, 190);
-  ctx.fillText('Image Coverage: ' + restaurant.imageCoverage + '%', 130, 220);
-  ctx.fillText('Menu to Order (M2O%): ' + restaurant.m2o + '%', 130, 250);
+  ctx.fillText('Has tried Ads before: ' + (restaurant.hasTriedAdsBefore ? 'Yes' : 'No'), 130, 180);
+  ctx.fillText('Image Coverage: ' + restaurant.imageCoverage + '%', 130, 210);
+  ctx.fillText('Menu to Order (M2O%): ' + restaurant.m2o + '%', 130, 240);
+  ctx.fillText('Rating: ' + restaurant.rating, 130, 270);
+  ctx.fillText('Visibility: ' + restaurant.visibility + '%', 130, 300);
 
   // Instructions
   ctx.font = '18px Arial';
-  ctx.fillText('Should you sell VP+ to this restaurant?', 130, 290);
+  ctx.fillText('Select the products you want to sell:', 130, 330);
 
-  // Sell VP+ Button
-  ctx.fillStyle = '#00cc00';
-  ctx.fillRect(200, 350, 150, 50);
+  // Product selection buttons
+  drawProductButton('GVP', 130, 360);
+  drawProductButton('VP+', 250, 360);
+  drawProductButton('BoS', 370, 360);
+
+  // Confirm button
+  ctx.fillStyle = '#0000FF';
+  ctx.fillRect(490, 360, 100, 40);
   ctx.fillStyle = '#ffffff';
   ctx.font = '18px Arial';
-  let sellText = 'Sell VP+';
-  let sellTextWidth = ctx.measureText(sellText).width;
-  ctx.fillText(sellText, 200 + 75 - sellTextWidth / 2, 380);
-
-  // Do Not Sell VP+ Button
-  ctx.fillStyle = '#cc0000';
-  ctx.fillRect(450, 350, 180, 50); // Increased width to prevent overflow
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '16px Arial';
-  let notSellText = 'Do Not Sell VP+';
-  let notSellTextWidth = ctx.measureText(notSellText).width;
-  ctx.fillText(notSellText, 450 + 90 - notSellTextWidth / 2, 380); // Adjusted position
-
-  // Note: Adjusted font sizes and positions to prevent text overflow
+  ctx.fillText('Confirm', 505, 385);
 }
+
+function drawProductButton(product, x, y) {
+  ctx.fillStyle = selectedProducts.includes(product) ? '#4CAF50' : '#cccccc';
+  ctx.fillRect(x, y, 100, 40);
+  ctx.fillStyle = '#000000';
+  ctx.font = '16px Arial';
+  
+  // Center align text
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(product, x + 50, y + 20);
+  
+  // Reset text alignment for other drawings
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+}
+
+let selectedProducts = [];
 
 /** Dialogue Click Listener **/
 canvas.addEventListener('click', function(e) {
@@ -406,48 +530,68 @@ function dialogueClickListener(e) {
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
 
-  // Sell VP+ Button
-  if (mouseX >= 200 && mouseX <= 350 && mouseY >= 350 && mouseY <= 400) {
-    // Player chose to sell VP+
-    handlePlayerChoice(true);
-    closeDialogue();
+  // Product selection buttons
+  if (mouseY >= 360 && mouseY <= 400) {
+    if (mouseX >= 130 && mouseX <= 230) toggleProduct('GVP');
+    if (mouseX >= 250 && mouseX <= 350) toggleProduct('VP+');
+    if (mouseX >= 370 && mouseX <= 470) toggleProduct('BoS');
   }
 
-  // Do Not Sell VP+ Button
-  if (mouseX >= 450 && mouseX <= 630 && mouseY >= 350 && mouseY <= 400) {
-    // Player chose not to sell VP+
-    handlePlayerChoice(false);
+  // Confirm button
+  if (mouseX >= 490 && mouseX <= 590 && mouseY >= 360 && mouseY <= 400) {
+    handlePlayerChoice();
     closeDialogue();
   }
 }
 
-function handlePlayerChoice(playerChoseToSell) {
-  const restaurant = currentDialogue;
-  // Check if the restaurant meets all criteria
-  const shouldSellVP = !restaurant.hasTriedAdsBefore &&
-    restaurant.imageCoverage > 30 &&
-    restaurant.m2o > 6;
-
-  if (playerChoseToSell === shouldSellVP) {
-    // Correct choice
-    score += 1;
-    // Provide feedback with animation
-    floatingTexts.push({
-      text: '+1',
-      x: player.x + TILE_SIZE / 2,
-      y: player.y,
-      opacity: 1
-    });
+function toggleProduct(product) {
+  const index = selectedProducts.indexOf(product);
+  if (index > -1) {
+    selectedProducts.splice(index, 1);
   } else {
-    // Incorrect choice
-    // Provide feedback with animation (no score change)
-    floatingTexts.push({
-      text: '+0',
-      x: player.x + TILE_SIZE / 2,
-      y: player.y,
-      opacity: 1
-    });
+    selectedProducts.push(product);
   }
+}
+
+function handlePlayerChoice() {
+  const restaurant = currentDialogue;
+  const correctProducts = getEligibleProducts(restaurant);
+  
+  const correctChoices = selectedProducts.filter(product => correctProducts.includes(product));
+  const incorrectChoices = selectedProducts.filter(product => !correctProducts.includes(product));
+  const missedChoices = correctProducts.filter(product => !selectedProducts.includes(product));
+
+  const totalCorrect = correctChoices.length;
+  const totalIncorrect = incorrectChoices.length + missedChoices.length;
+
+  score += totalCorrect;
+
+  // Provide feedback with animation
+  floatingTexts.push({
+    text: `+${totalCorrect}`,
+    x: player.x + TILE_SIZE / 2,
+    y: player.y,
+    opacity: 1
+  });
+
+  // Reset selected products
+  selectedProducts = [];
+}
+
+function getEligibleProducts(restaurant) {
+  const eligibleProducts = ['GVP']; // GVP is always eligible
+
+  // VP+ eligibility
+  if (!restaurant.hasTriedAdsBefore && restaurant.imageCoverage > 30 && restaurant.m2o > 6) {
+    eligibleProducts.push('VP+');
+  }
+
+  // BoS eligibility
+  if (restaurant.imageCoverage > 20 && restaurant.rating > 2.9 && restaurant.visibility > 50) {
+    eligibleProducts.push('BoS');
+  }
+
+  return eligibleProducts;
 }
 
 function closeDialogue() {
@@ -559,4 +703,84 @@ function drawSalesManagerDown(frame) {
   } else {
     ctx.clearRect(16, 24, 4, 8); // Erase right leg
   }
+}
+
+/** Show Final Score **/
+function showFinalScore() {
+  gameState = 'completed';
+}
+
+/** Draw Final Score **/
+function drawFinalScore() {
+  // Draw semi-transparent background
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw popup box
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(200, 150, 400, 300);
+
+  // Draw title
+  ctx.fillStyle = '#000000';
+  ctx.font = 'bold 24px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Game Completed!', canvas.width / 2, 200);
+
+  // Draw score
+  ctx.font = '20px Arial';
+  ctx.fillText(`Your Final Score: ${score}`, canvas.width / 2, 250);
+
+  // Draw restaurants covered
+  ctx.fillText(`Restaurants Covered: ${clients}`, canvas.width / 2, 300);
+
+  // Draw restart button
+  ctx.fillStyle = '#4CAF50';
+  ctx.fillRect(350, 350, 100, 40);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 18px Arial';
+  ctx.fillText('Restart', 400, 375);
+
+  // Reset text alignment
+  ctx.textAlign = 'left';
+}
+
+/** Final Score Click Listener **/
+canvas.addEventListener('click', function(e) {
+  if (gameCompleted) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Check if click is on the restart button
+    if (mouseX >= 350 && mouseX <= 450 && mouseY >= 350 && mouseY <= 390) {
+      restartGame();
+    }
+  }
+});
+
+/** Restart Game **/
+function restartGame() {
+  // Reset game variables
+  clients = 0;
+  score = 0;
+  gameCompleted = false;
+  gameState = 'play';
+  selectedProducts = [];
+  floatingTexts = [];
+
+  // Reset player position
+  player.x = office.x;
+  player.y = office.y;
+
+  // Reset restaurants
+  restaurants.forEach(restaurant => {
+    restaurant.visited = false;
+  });
+
+  // Regenerate map and restaurants (optional, remove if you want to keep the same layout)
+  // mapData = [];
+  // buildings = [];
+  // restaurants = [];
+  // generateMap();
+  // placeRestaurants();
 }
