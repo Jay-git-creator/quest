@@ -485,7 +485,7 @@ function drawDialogue() {
 
   // Instructions
   ctx.font = '18px Arial';
-  ctx.fillText('Select the products you want to sell:', 130, 330);
+  ctx.fillText('For which products this restraunt is eligible?', 130, 330);
 
   // Product selection buttons
   drawProductButton('GVP', 130, 360);
@@ -557,22 +557,27 @@ function handlePlayerChoice() {
   const restaurant = currentDialogue;
   const correctProducts = getEligibleProducts(restaurant);
   
-  const correctChoices = selectedProducts.filter(product => correctProducts.includes(product));
-  const incorrectChoices = selectedProducts.filter(product => !correctProducts.includes(product));
-  const missedChoices = correctProducts.filter(product => !selectedProducts.includes(product));
+  const allCorrect = correctProducts.length === selectedProducts.length &&
+                     correctProducts.every(product => selectedProducts.includes(product));
 
-  const totalCorrect = correctChoices.length;
-  const totalIncorrect = incorrectChoices.length + missedChoices.length;
-
-  score += totalCorrect;
-
-  // Provide feedback with animation
-  floatingTexts.push({
-    text: `+${totalCorrect}`,
-    x: player.x + TILE_SIZE / 2,
-    y: player.y,
-    opacity: 1
-  });
+  if (allCorrect) {
+    score += 1;
+    // Provide feedback with animation
+    floatingTexts.push({
+      text: "+1",
+      x: player.x + TILE_SIZE / 2,
+      y: player.y,
+      opacity: 1
+    });
+  } else {
+    // Optionally, you can add negative feedback for incorrect choices
+    floatingTexts.push({
+      text: "Incorrect",
+      x: player.x + TILE_SIZE / 2,
+      y: player.y,
+      opacity: 1
+    });
+  }
 
   // Reset selected products
   selectedProducts = [];
