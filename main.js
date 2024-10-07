@@ -244,7 +244,7 @@ function drawReadme() {
   // Draw title
   ctx.fillStyle = '#000000';
   ctx.font = 'bold 24px Arial';
-  ctx.fillText('Welcome to the VP+ Sales Game!', 250, 100);
+  ctx.fillText('Product eligibility Game!', 250, 100);
 
   // Draw instructions
   ctx.font = '16px Arial';
